@@ -10,7 +10,7 @@ export default function App() {
     <Router>
       <div style={{ fontFamily: 'Arial, sans-serif', minHeight: '100vh', background: '#f4f6f9', margin: 0 }}>
         
-        {/* Menú de navegación temporal y scannable */}
+        {/* Menú de navegación temporal y funcional */}
         <nav style={{ 
           padding: '15px 20px', 
           background: '#1a1a1a', 
@@ -26,7 +26,7 @@ export default function App() {
           <Link to="/historial" style={{ color: '#fff', textDecoration: 'none', fontWeight: 'bold' }}>📅 Historial (Módulo 2)</Link>
         </nav>
 
-        {/* Contenedor principal donde se renderizarán tus 5 pantallas */}
+        {/* Contenedor principal donde se renderizan tus 5 pantallas */}
         <main style={{ padding: '30px' }}>
           <Routes>
             <Route path="/" element={<Dashboard />} />
