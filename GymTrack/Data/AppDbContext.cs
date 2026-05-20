@@ -44,6 +44,75 @@ namespace GymTrack.Data
                 .WithMany()
                 .HasForeignKey(sd => sd.EjercicioId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder
+                .Entity<Ejercicio>()
+                .HasData(
+                    new Ejercicio
+                    {
+                        EjercicioId = 1,
+                        Nombre = "Press de Banca",
+                        Descripcion = "Ejercicio compuesto para pecho",
+                        GrupoMuscular = "Pecho",
+                        Dificultad = "Intermedio",
+                    },
+                    new Ejercicio
+                    {
+                        EjercicioId = 2,
+                        Nombre = "Sentadilla Libre",
+                        Descripcion = "El rey de los ejercicios de pierna",
+                        GrupoMuscular = "Pierna",
+                        Dificultad = "Intermedio",
+                    },
+                    new Ejercicio
+                    {
+                        EjercicioId = 3,
+                        Nombre = "Dominadas",
+                        Descripcion = "Ejercicio de peso corporal para espalda",
+                        GrupoMuscular = "Espalda",
+                        Dificultad = "Avanzado",
+                    },
+                    new Ejercicio
+                    {
+                        EjercicioId = 4,
+                        Nombre = "Curl de Bíceps",
+                        Descripcion = "Aislamiento para bíceps",
+                        GrupoMuscular = "Brazos",
+                        Dificultad = "Básico",
+                    },
+                    new Ejercicio
+                    {
+                        EjercicioId = 5,
+                        Nombre = "Press Militar",
+                        Descripcion = "Empuje vertical para hombros",
+                        GrupoMuscular = "Hombros",
+                        Dificultad = "Intermedio",
+                    },
+                    new Ejercicio
+                    {
+                        EjercicioId = 6,
+                        Nombre = "Peso Muerto",
+                        Descripcion = "Ejercicio compuesto para espalda baja y pierna",
+                        GrupoMuscular = "Espalda",
+                        Dificultad = "Avanzado",
+                    },
+                    new Ejercicio
+                    {
+                        EjercicioId = 7,
+                        Nombre = "Fondos en Paralelas",
+                        Descripcion = "Ejercicio para tríceps y pecho",
+                        GrupoMuscular = "Pecho",
+                        Dificultad = "Intermedio",
+                    },
+                    new Ejercicio
+                    {
+                        EjercicioId = 8,
+                        Nombre = "Plancha",
+                        Descripcion = "Ejercicio isométrico para core",
+                        GrupoMuscular = "Core",
+                        Dificultad = "Básico",
+                    }
+                );
         }
     }
 }
