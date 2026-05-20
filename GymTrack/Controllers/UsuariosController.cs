@@ -19,7 +19,12 @@ namespace GymTrack.Controllers
         [HttpPost("registro")]
         public async Task<IActionResult> Registro(Usuario usuario)
         {
-            var emailExiste = await _context.Usuarios.AnyAsync(u => u.Email == usuario.Email);
+            if (string.IsNullOrWhiteSpace(usuario.Email) || !usuario.Email.Contains("@"))
+                return BadRequest("El email no es válido.");
+
+            var emailExiste = await _context.Usuarios.AnyAsync(u =>
+                u.Email.ToLower() == usuario.Email.ToLower()
+            );
 
             if (emailExiste)
                 return BadRequest("El email ya está registrado.");
