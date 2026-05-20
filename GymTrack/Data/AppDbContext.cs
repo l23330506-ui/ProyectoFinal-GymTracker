@@ -113,6 +113,24 @@ namespace GymTrack.Data
                         Dificultad = "Básico",
                     }
                 );
+
+            modelBuilder.Entity<SesionDetalle>().HasKey(sd => sd.DetalleId);
+
+            modelBuilder.Entity<SesionDetalle>().Property(sd => sd.PesoKg).HasPrecision(10, 2);
+
+            modelBuilder
+                .Entity<Sesion>()
+                .HasOne<Usuario>()
+                .WithMany(u => u.Sesiones)
+                .HasForeignKey(s => s.UsuarioId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder
+                .Entity<Sesion>()
+                .HasOne(s => s.Rutina)
+                .WithMany()
+                .HasForeignKey(s => s.RutinaId)
+                .OnDelete(DeleteBehavior.Restrict);
         }
     }
 }
