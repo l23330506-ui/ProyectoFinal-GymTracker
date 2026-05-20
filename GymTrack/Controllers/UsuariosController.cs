@@ -33,6 +33,34 @@ namespace GymTrack.Controllers
             return Ok(new { mensaje = "Usuario registrado correctamente", id = usuario.UsuarioId });
         }
 
+        [HttpPost("login")]
+        public async Task<IActionResult> Login(Usuario loginData)
+        {
+            var usuario = await _context.Usuarios.FirstOrDefaultAsync(u =>
+                u.Email == loginData.Email
+            );
+
+            if (usuario == null)
+                return Unauthorized("Email o contraseña incorrectos.");
+
+            bool passwordValido = BCrypt.Net.BCrypt.Verify(
+                loginData.PasswordHash,
+                usuario.PasswordHash
+            );
+
+            if (!passwordValido)
+                return Unauthorized("Email o contraseña incorrectos.");
+
+            return Ok(
+                new
+                {
+                    id = usuario.UsuarioId,
+                    nombre = usuario.Nombre,
+                    email = usuario.Email,
+                }
+            );
+        }
+
         [HttpGet("{id}")]
         public async Task<ActionResult<Usuario>> GetUsuario(int id)
         {
