@@ -19,7 +19,7 @@ export default function Login() {
         setError("");
         if (modo === "registro") {
             const res = await fetch(
-                "http://localhost:5000/api/usuarios/registro",
+                'http://localhost:5050/api/usuarios/registro',
                 {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
@@ -35,7 +35,7 @@ export default function Login() {
             }
         } else {
             const res = await fetch(
-                "http://localhost:5000/api/usuarios/login",
+                'http://localhost:5050/api/usuarios/login',
                 {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
