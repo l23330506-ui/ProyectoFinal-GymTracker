@@ -1,150 +1,155 @@
 import { useState } from 'react';
 
-export default function MisRutinas() {
-  // Estados para el formulario
-  const [nombreRutina, setNombreRutina] = useState("");
-  const [enfoque, setEnfoque] = useState("Hipertrofia");
-  const [descripcion, setDescripcion] = useState("");
+export default function MisRutinas({ rutinas, setRutinas, onIniciarEntrenamiento }) {
+  const [nombre, setNombre] = useState('');
+  const [descripcion, setDescripcion] = useState('');
+  const [ejerciciosSeleccionados, setEjerciciosSeleccionados] = useState([]);
+  const [editandoId, setEditandoId] = useState(null);
   
-  // Estados para la respuesta de la API
-  const [enviando, setEnviando] = useState(false);
-  const [mensaje, setMensaje] = useState({ texto: "", tipo: "" });
+  // Estado para alternar la vista del catálogo dentro del formulario
+  const [verCatalogo, setVerCatalogo] = useState(false);
 
-  const elSubmit = (e) => {
+  // Catálogo estático interno que pidieron unificar
+  const catalogoEjercicios = [
+    "Press de Banca Inclinado",
+    "Sentadilla Libre con Barra",
+    "Dominadas Supinas",
+    "Press Militar con Mancuernas",
+    "Peso Muerto Rumano",
+    "Curl de Bíceps en Polea"
+  ];
+
+  const alternarEjercicio = (ejercicio) => {
+    if (ejerciciosSeleccionados.includes(ejercicio)) {
+      setEjerciciosSeleccionados(ejerciciosSeleccionados.filter(e => e !== ejercicio));
+    } else {
+      setEjerciciosSeleccionados([...ejerciciosSeleccionados, ejercicio]);
+    }
+  };
+
+  const guardarRutina = (e) => {
     e.preventDefault();
-    
-    if (!nombreRutina.trim()) {
-      setMensaje({ texto: "⚠️ Por favor, ponle un nombre a tu rutina.", tipo: "error" });
-      return;
+    if (!nombre.trim()) return;
+
+    if (editandoId) {
+      // Modo Edición / Modificar
+      setRutinas(rutinas.map(r => r.id === editandoId ? { ...r, nombre, descripcion, ejercicios: ejerciciosSeleccionados } : r));
+      setEditandoId(null);
+    } else {
+      // Modo Crear Nueva Rutina
+      const nueva = {
+        id: Date.now(),
+        nombre,
+        descripcion,
+        ejercicios: ejerciciosSeleccionados
+      };
+      setRutinas([...rutinas, nueva]);
     }
 
-    setEnviando(true);
-    setMensaje({ texto: "", tipo: "" });
+    // Limpiar campos
+    setNombre('');
+    setDescripcion('');
+    setEjerciciosSeleccionados([]);
+    setVerCatalogo(false);
+  };
 
-    // Objeto con la estructura limpia para C#
-    const nuevaRutina = {
-      nombre: nombreRutina,
-      enfoqueMuscular: enfoque,
-      descripcion: descripcion,
-      fechaCreacion: new Date().toISOString()
-    };
+  const prepararModificacion = (rutina) => {
+    setEditandoId(rutina.id);
+    setNombre(rutina.nombre);
+    setDescripcion(rutina.descripcion);
+    setEjerciciosSeleccionados(rutina.ejercicios);
+    setVerCatalogo(true);
+  };
 
-    // Petición POST real a la API en el puerto 5050
-    fetch('http://localhost:5050/api/rutinas', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(nuevaRutina)
-    })
-    .then(response => {
-      if (!response.ok) {
-        throw new Error('El servidor de la API rechazó la petición (revisa CORS)');
-      }
-      return response.json();
-    })
-    .then(data => {
-      setMensaje({ texto: "✅ ¡Rutina guardada con éxito en la base de datos!", tipo: "exito" });
-      // Limpiar formulario
-      setNombreRutina("");
-      setDescripcion("");
-      setEnviando(false);
-    })
-    .catch(err => {
-      console.error(err);
-      // Respaldo visual simulado inteligente para que puedas testear la UI de inmediato
-      setMensaje({ 
-        texto: `⚙️ FrontEnd Listo: Simulación local completada. (API en puerto 5050 no procesó por CORS u offline).`, 
-        tipo: "simulado" 
-      });
-      setEnviando(false);
-    });
+  const eliminarRutina = (id) => {
+    setRutinas(rutinas.filter(r => r.id !== id));
   };
 
   return (
-    <div style={{ maxWidth: '600px', margin: '0 auto', fontFamily: 'sans-serif' }}>
-      <div style={{ background: '#fff', padding: '30px', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', border: '1px solid #e5e7eb' }}>
+    <div style={{ maxWidth: '800px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '30px' }}>
+      
+      {/* FORMULARIO DE CREACIÓN/EDICIÓN */}
+      <div style={{ background: '#fff', padding: '25px', borderRadius: '12px', border: '1px solid #e5e7eb', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }}>
+        <h2 style={{ margin: '0 0 15px 0', color: '#111827' }}>
+          {editandoId ? '✏️ Modificando Rutina' : '📝 Crear Nueva Rutina'}
+        </h2>
         
-        <h2 style={{ margin: '0 0 10px 0', color: '#1a1a1a' }}>📝 Crear Nueva Rutina Personalizada</h2>
-        <p style={{ margin: '0 0 25px 0', color: '#666', fontSize: '0.95rem' }}>
-          Diseña tu estructura de entrenamiento. Al guardar, se enviará directo al endpoint de .NET.
-        </p>
+        <form onSubmit={guardarRutina} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+          <div>
+            <label style={{ display: 'block', marginBottom: '6px', fontWeight: 'bold', fontSize: '0.9rem' }}>Nombre de la Rutina:</label>
+            <input type="text" value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Ej. Rutina de Pierna - Cuádriceps" style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ccc', boxSizing: 'border-box' }} />
+          </div>
 
-        {/* Alertas dinámicas */}
-        {mensaje.texto && (
-          <div style={{ 
-            padding: '12px 16px', 
-            borderRadius: '8px', 
-            marginBottom: '20px', 
-            fontSize: '0.9rem',
-            fontWeight: '500',
-            background: mensaje.tipo === 'exito' ? '#d1fae5' : mensaje.tipo === 'error' ? '#fee2e2' : '#fef3c7',
-            color: mensaje.tipo === 'exito' ? '#065f46' : mensaje.tipo === 'error' ? '#991b1b' : '#92400e',
-            border: `1px solid ${mensaje.tipo === 'exito' ? '#a7f3d0' : mensaje.tipo === 'error' ? '#fca5a5' : '#fde68a'}`
-          }}>
-            {mensaje.texto}
+          <div>
+            <label style={{ display: 'block', marginBottom: '6px', fontWeight: 'bold', fontSize: '0.9rem' }}>Descripción:</label>
+            <textarea value={descripcion} onChange={(e) => setDescripcion(e.target.value)} placeholder="Notas adicionales..." style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ccc', boxSizing: 'border-box', fontFamily: 'sans-serif' }} />
+          </div>
+
+          {/* BOTÓN PARA ABRIR EL CATÁLOGO DENTRO DEL FORMULARIO */}
+          <div>
+            <button type="button" onClick={() => setVerCatalogo(!verCatalogo)} style={{ background: '#4b5563', color: '#fff', border: 'none', padding: '8px 12px', borderRadius: '6px', cursor: 'pointer', fontWeight: '500' }}>
+              {verCatalogo ? '🔼 Ocultar Catálogo' : '🔍 + Abrir Catálogo de Ejercicios'}
+            </button>
+            
+            {verCatalogo && (
+              <div style={{ background: '#f9fafb', padding: '15px', borderRadius: '8px', border: '1px solid #e5e7eb', marginTop: '10px' }}>
+                <p style={{ margin: '0 0 10px 0', fontSize: '0.85rem', color: '#666', fontWeight: 'bold' }}>Selecciona los ejercicios que pertenecerán a esta rutina:</p>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                  {catalogoEjercicios.map((ej, idx) => (
+                    <label key={idx} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.9rem' }}>
+                      <input type="checkbox" checked={ejerciciosSeleccionados.includes(ej)} onChange={() => alternarEjercicio(ej)} />
+                      {ej}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <button type="submit" style={{ background: '#2563eb', color: '#fff', border: 'none', padding: '12px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>
+            {editandoId ? '💾 Guardar Cambios' : '💾 Crear Rutina'}
+          </button>
+        </form>
+      </div>
+
+      {/* LISTADO DE RUTINAS CON SUS 3 BOTONES */}
+      <div style={{ background: '#fff', padding: '25px', borderRadius: '12px', border: '1px solid #e5e7eb', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }}>
+        <h3 style={{ margin: '0 0 20px 0' }}>📋 Mis Estructuras de Rutina</h3>
+        
+        {rutinas.length === 0 ? (
+          <p style={{ color: '#9ca3af', fontStyle: 'italic' }}>No tienes rutinas creadas todavía.</p>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+            {rutinas.map((rutina) => (
+              <div key={rutina.id} style={{ padding: '15px', borderRadius: '8px', border: '1px solid #e5e7eb', background: '#f9fafb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ maxWidth: '60%' }}>
+                  <h4 style={{ margin: '0 0 5px 0', color: '#1f2937' }}>{rutina.nombre}</h4>
+                  <p style={{ margin: '0 0 8px 0', color: '#6b7280', fontSize: '0.85rem' }}>{rutina.descripcion}</p>
+                  <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
+                    {rutina.ejercicios.map((e, i) => (
+                      <span key={i} style={{ background: '#e5e7eb', padding: '2px 6px', borderRadius: '4px', fontSize: '0.75rem', color: '#374151' }}>{e}</span>
+                    ))}
+                  </div>
+                </div>
+
+                {/* LOS TRES BOTONES PEDIDOS */}
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button onClick={() => onIniciarEntrenamiento(rutina)} style={{ background: '#10b981', color: '#fff', border: 'none', padding: '8px 12px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.85rem' }}>
+                    🚀 Iniciar
+                  </button>
+                  <button onClick={() => prepararModificacion(rutina)} style={{ background: '#f59e0b', color: '#fff', border: 'none', padding: '8px 12px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.85rem' }}>
+                    ✏️ Modificar
+                  </button>
+                  <button onClick={() => eliminarRutina(rutina.id)} style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '8px 12px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.85rem' }}>
+                    🗑️ Borrar
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
         )}
-
-        <form onSubmit={elSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          
-          <div>
-            <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold', color: '#444', fontSize: '0.9rem' }}>Nombre de la Rutina:</label>
-            <input 
-              type="text"
-              placeholder="Ej. Empuje - Pecho/Hombro/Tríceps"
-              value={nombreRutina}
-              onChange={(e) => setNombreRutina(e.target.value)}
-              style={{ width: '100%', padding: '10px 14px', borderRadius: '6px', border: '1px solid #ccc', boxSizing: 'border-box', fontSize: '1rem' }}
-            />
-          </div>
-
-          <div>
-            <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold', color: '#444', fontSize: '0.9rem' }}>Enfoque u Objetivo:</label>
-            <select
-              value={enfoque}
-              onChange={(e) => setEnfoque(e.target.value)}
-              style={{ width: '100%', padding: '10px 14px', borderRadius: '6px', border: '1px solid #ccc', boxSizing: 'border-box', fontSize: '1rem', background: '#fff' }}
-            >
-              <option value="Hipertrofia">🔥 Hipertrofia (Ganancia muscular)</option>
-              <option value="Fuerza">💪 Fuerza Maxima (RPT)</option>
-              <option value="Resistencia">🏃‍♂️ Resistencia / Cardio</option>
-              <option value="Definición">✂️ Definición / Tonificación</option>
-            </select>
-          </div>
-
-          <div>
-            <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold', color: '#444', fontSize: '0.9rem' }}>Notas o Descripción (Opcional):</label>
-            <textarea 
-              rows="3"
-              placeholder="Anota los días de descanso o indicaciones especiales..."
-              value={descripcion}
-              onChange={(e) => setDescripcion(e.target.value)}
-              style={{ width: '100%', padding: '10px 14px', borderRadius: '6px', border: '1px solid #ccc', boxSizing: 'border-box', fontSize: '1rem', fontFamily: 'sans-serif', resize: 'vertical' }}
-            />
-          </div>
-
-          <button
-            type="submit"
-            disabled={enviando}
-            style={{ 
-              background: enviando ? '#93c5fd' : '#2563eb', 
-              color: '#fff', 
-              border: 'none', 
-              padding: '14px', 
-              borderRadius: '8px', 
-              fontWeight: 'bold', 
-              fontSize: '1rem', 
-              cursor: enviando ? 'not-allowed' : 'pointer',
-              transition: 'background 0.2s'
-            }}
-          >
-            {enviando ? "💾 Guardando..." : "💾 Guardar Rutina en API"}
-          </button>
-
-        </form>
-
       </div>
+
     </div>
   );
 }

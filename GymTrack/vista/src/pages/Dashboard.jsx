@@ -1,90 +1,88 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 
-export default function Dashboard() {
-  const navigate = useNavigate();
-  
-  // Estados para guardar los datos de la API, carga y errores
-  const [usuario, setUsuario] = useState(null);
-  const [cargando, setCargando] = useState(true);
-  const [error, setError] = useState(null);
+export default function Dashboard({ alIniciarEntrenamiento }) {
+  // Estado para guardar la información que viene de la API de C#
+  const [datosFinales, setDatosFinales] = useState({
+    nombre: "Usuario GymTrack",
+    entrenamientosSemanales: 0,
+    ultimaRutina: "Sin entrenamientos aún"
+  });
 
+  const [errorApi, setErrorApi] = useState(false);
+
+  // Llamada real al backend local en el puerto 5050
   useEffect(() => {
-    // Llamada a la API en el puerto 5050
-    fetch('http://localhost:5050/api/usuario/resumen') // Ajusta el endpoint (/api/...) según el controlador de tu compañero
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error('No se pudo conectar con el servidor de la API');
-        }
+    fetch('http://localhost:5050/api/usuario/resumen')
+      .then(response => {
+        if (!response.ok) throw new Error('Error en servidor');
         return response.json();
       })
-      .then((data) => {
-        setUsuario(data);
-        setCargando(false);
+      .then(data => {
+        setDatosFinales(data);
+        setErrorApi(false);
       })
-      .catch((err) => {
-        console.error(err);
-        setError(err.message);
-        setCargando(false);
+      .catch(err => {
+        console.log("Servidor desconectado o sin ruta válida:", err);
+        setErrorApi(true);
       });
   }, []);
 
-  // Pantalla de carga estética temporal
-  if (cargando) {
-    return <div style={{ textAlign: 'center', padding: '40px', fontSize: '1.2rem', color: '#666' }}>⏳ Cargando tu progreso...</div>;
-  }
-
-  // Respaldo en caso de que la API esté apagada (evita datos quemados permanentes)
-  const datosFinales = error || !usuario ? {
-    nombre: "Usuario GymTrack",
-    entrenamientosSemanales: 0,
-    ultimaRutina: "Sin registros recientes (API Desconectada)"
-  } : usuario;
-
   return (
-    <div style={{ maxWidth: '800px', margin: '0 auto', fontFamily: 'sans-serif' }}>
+    <div style={{ maxWidth: '1000px', margin: '0 auto', fontFamily: 'sans-serif' }}>
       
-      {/* Alerta sutil si la API no está respondiendo */}
-      {error && (
-        <div style={{ background: '#fee2e2', color: '#ef4444', padding: '12px', borderRadius: '8px', marginBottom: '20px', fontSize: '0.9rem', fontWeight: '500' }}>
-          ⚠️ Nota: Mostrando modo desconectado. Servidor API ({error}) no disponible en localhost:5050.
+      {/* Alerta de modo desconectado (solo aparece si la API falla o está vacía) */}
+      {errorApi && (
+        <div style={{ background: '#fee2e2', color: '#ef4444', padding: '12px 20px', borderRadius: '8px', marginBottom: '20px', fontSize: '0.9rem', fontWeight: '500', border: '1px solid #fca5a5' }}>
+          ⚠️ Nota: Mostrando modo desconectado local. Servidor API no disponible o ruta inválida en localhost:5050.
         </div>
       )}
 
-      {/* Mensaje de Bienvenida */}
-      <div style={{ background: '#fff', padding: '30px', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', marginBottom: '20px' }}>
-        <h1 style={{ margin: '0 0 10px 0', color: '#1a1a1a' }}>¡Hola de nuevo, {datosFinales.nombre}! 👋</h1>
-        <p style={{ margin: 0, color: '#666', fontSize: '1.1rem' }}>¿Listo para superar tus límites el día de hoy?</p>
+      {/* 🟢 MENSAJE DE BIENVENIDA CORREGIDO (Sin encimarse) */}
+      <div style={{ background: '#fff', padding: '35px 30px', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', marginBottom: '25px', textAlign: 'center' }}>
+        <h1 style={{ 
+          margin: '0 0 20px 0',      // Empuja el subtítulo hacia abajo con suficiente aire
+          color: '#1a1a1a', 
+          lineHeight: '1.4',         // Da espacio extra por si el nombre ocupa dos renglones
+          fontSize: '2.4rem',
+          fontWeight: 'bold'
+        }}>
+          ¡Hola de nuevo, {datosFinales.nombre}! 👋
+        </h1>
+        <p style={{ margin: 0, color: '#666', fontSize: '1.15rem' }}>
+          ¿Listo para superar tus límites el día de hoy?
+        </p>
       </div>
 
-      {/* Tarjeta de Acción Principal */}
-      <div style={{ background: 'linear-gradient(135deg, #2563eb, #1d4ed8)', color: '#fff', padding: '30px', borderRadius: '12px', boxShadow: '0 4px 15px rgba(37,99,235,0.3)', marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      {/* BANNER INTERACTIVO CONECTADO A MIS RUTINAS */}
+      <div style={{ background: '#1d4ed8', color: '#fff', padding: '25px', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px', boxShadow: '0 4px 10px rgba(29,78,216,0.3)' }}>
         <div>
-          <h2 style={{ margin: '0 0 10px 0' }}>¿Entrenamos hoy?</h2>
-          <p style={{ margin: 0, opacity: 0.9 }}>Registra tus series, repeticiones y pesos en tiempo real.</p>
+          <h3 style={{ margin: '0 0 8px 0', fontSize: '1.4rem' }}>¿Entrenamos hoy?</h3>
+          <p style={{ margin: 0, opacity: 0.9, fontSize: '0.95rem' }}>Visualiza tus estructuras, modifica tus cargas o arranca una sesión en vivo.</p>
         </div>
-        <button 
-          onClick={() => navigate('/entrenar')} 
-          style={{ background: '#fff', color: '#2563eb', border: 'none', padding: '12px 24px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '1rem' }}
-        >
-          🚀 Iniciar Entrenamiento
+        <button onClick={alIniciarEntrenamiento} style={{ background: '#fff', color: '#1d4ed8', border: 'none', padding: '12px 20px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+          🚀 Ir a Mis Rutinas
         </button>
       </div>
 
-      {/* Resumen de Actividad Dinámico */}
+      {/* TARJETAS DE INDICADORES (ESTADÍSTICAS) */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-        <div style={{ background: '#fff', padding: '20px', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }}>
-          <h3 style={{ margin: '0 0 10px 0', color: '#444' }}>Progreso Semanal</h3>
-          <p style={{ fontSize: '1.5rem', fontWeight: 'bold', margin: '0 0 5px 0', color: '#10b981' }}>{datosFinales.entrenamientosSemanales} Días</p>
-          <p style={{ margin: 0, color: '#888', fontSize: '0.9rem' }}>¡Construyendo disciplina día a día!</p>
+        <div style={{ background: '#fff', padding: '25px', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', textAlign: 'center', border: '1px solid #e5e7eb' }}>
+          <h4 style={{ margin: '0 0 10px 0', color: '#4b5563', fontSize: '1.1rem' }}>Total de entrenamientos</h4>
+          <span style={{ fontSize: '2rem', fontWeight: 'bold', color: '#10b981', display: 'block', marginBottom: '5px' }}>
+            {datosFinales.entrenamientosSemanales} sesiones
+          </span>
+          <p style={{ margin: 0, color: '#9ca3af', fontSize: '0.85rem' }}>¡Construyendo disciplina día a día!</p>
         </div>
 
-        <div style={{ background: '#fff', padding: '20px', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }}>
-          <h3 style={{ margin: '0 0 10px 0', color: '#444' }}>Último Entrenamiento</h3>
-          <p style={{ fontSize: '1.05rem', fontWeight: '500', margin: '0 0 5px 0', color: '#1a1a1a' }}>{datosFinales.ultimaRutina}</p>
-          <p style={{ margin: 0, color: '#888', fontSize: '0.9rem' }}>Registro traído de la base de datos</p>
+        <div style={{ background: '#fff', padding: '25px', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', textAlign: 'center', border: '1px solid #e5e7eb' }}>
+          <h4 style={{ margin: '0 0 10px 0', color: '#4b5563', fontSize: '1.1rem' }}>Último Entrenamiento</h4>
+          <span style={{ fontSize: '1.15rem', fontWeight: '600', color: '#1f2937', display: 'block', margin: '10px 0' }}>
+            {datosFinales.ultimaRutina}
+          </span>
+          <div style={{ width: '40px', height: '2px', background: '#e5e7eb', margin: '0 auto' }}></div>
         </div>
       </div>
+
     </div>
   );
 }
