@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Dashboard from './pages/Dashboard';
 import MisRutinas from './pages/MisRutinas';
 import EntrenamientoActivo from './pages/EntrenamientoActivo';
@@ -48,7 +48,7 @@ export default function App() {
   return (
     <div style={{ minHeight: '100vh', background: '#f3f4f6', fontFamily: 'sans-serif' }}>
       
-      {/* BARRA DE NAVEGACIÓN SUPERIOR */}
+      {/* BARRA DE NAVEGACIÓN SUPERIOR CORREGIDA */}
       <nav style={{ background: '#111827', padding: '15px 20px', display: 'flex', gap: '15px', alignItems: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
         <span style={{ color: '#fff', fontWeight: 'bold', marginRight: '20px', fontSize: '1.2rem' }}>🏋️‍♂️ GymTrack</span>
         <button onClick={() => setPestanaActual('dashboard')} style={{ background: pestanaActual === 'dashboard' ? '#374151' : 'transparent', color: '#fff', border: 'none', padding: '8px 12px', borderRadius: '6px', cursor: 'pointer', fontWeight: '500' }}>📊 Dashboard</button>
@@ -60,7 +60,10 @@ export default function App() {
       {/* RENDERIZADO DINÁMICO DE PÁGINAS */}
       <div style={{ padding: '30px 20px' }}>
         {pestanaActual === 'dashboard' && (
-          <Dashboard alIniciarEntrenamiento={() => setPestanaActual('rutinas')} />
+          <Dashboard 
+            alIniciarEntrenamiento={() => setPestanaActual('rutinas')} 
+            historialLocal={historial} // Permite al Dashboard contar las sesiones dinámicamente si la API de C# no responde
+          />
         )}
         
         {pestanaActual === 'rutinas' && (
@@ -75,6 +78,10 @@ export default function App() {
           <EntrenamientoActivo 
             rutinaActiva={rutinaParaEntrenar} 
             onFinalizarEntrenamiento={finalizarEntrenamientoGlobal} 
+            onCancelarEntrenamiento={() => {
+              setRutinaParaEntrenar(null); // Limpia la rutina en curso al salir por seguridad
+              setPestanaActual('rutinas'); // Regresa al usuario a Mis Rutinas sin guardar nada
+            }} 
           />
         )}
         
