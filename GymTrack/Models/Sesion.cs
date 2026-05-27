@@ -8,7 +8,7 @@ namespace GymTrack.Models
         public DateTime FechaInicio { get; set; } = DateTime.Now;
         public DateTime? FechaFin { get; set; }
 
-        public Rutina Rutina { get; set; } = null!;
+        public Rutina? Rutina { get; set; }
         public ICollection<SesionDetalle> Detalles { get; set; } = new List<SesionDetalle>();
     }
 }

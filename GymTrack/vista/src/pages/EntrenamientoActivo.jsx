@@ -1,155 +1,558 @@
-import { useState } from 'react';
+import { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 
-export default function EntrenamientoActivo({ rutinaActiva, onFinalizarEntrenamiento, onCancelarEntrenamiento }) {
-  // Tomamos los ejercicios asignados a la rutina o uno genérico si entró directo
-  const listaEjercicios = rutinaActiva && rutinaActiva.ejercicios.length > 0 
-    ? rutinaActiva.ejercicios 
-    : ["Ejercicio Libre General"];
+export default function EntrenamientoActivo() {
+    const { rutinaId } = useParams();
+    const navigate = useNavigate();
+    const usuario = JSON.parse(localStorage.getItem("usuario"));
 
-  // Índice para saber qué ejercicio está respondiendo el usuario en este momento
-  const [indiceEjercicioActual, setIndiceEjercicioActual] = useState(0);
-  const ejercicioActual = listaEjercicios[indiceEjercicioActual];
+    const [rutina, setRutina] = useState(null);
+    const [sesionId, setSesionId] = useState(null);
+    const [sesionIniciada, setSesionIniciada] = useState(false);
+    const [finalizado, setFinalizado] = useState(false);
+    const [mensaje, setMensaje] = useState("");
+    const [segundos, setSegundos] = useState(0);
+    const [timerActivo, setTimerActivo] = useState(false);
+    const [mostrarConfirm, setMostrarConfirm] = useState(false);
 
-  // Estado para capturar los campos numéricos
-  const [peso, setPeso] = useState('');
-  const [reps, setReps] = useState('');
+    const [registros, setRegistros] = useState({});
 
-  // Aquí se guardan todas las series acumuladas
-  const [todasLasSeries, setTodasLasSeries] = useState([]);
+    useEffect(() => {
+        fetch(`http://localhost:5050/api/rutinas/${rutinaId}`)
+            .then((res) => res.json())
+            .then((data) => {
+                setRutina(data);
+                const init = {};
+                data.rutinaEjercicios?.forEach((re) => {
+                    init[re.ejercicioId] = Array.from(
+                        { length: re.series },
+                        (_, i) => ({
+                            serie: i + 1,
+                            reps: re.repeticiones,
+                            peso: "",
+                        }),
+                    );
+                });
+                setRegistros(init);
+            });
 
-  // Añadir una serie al ejercicio que está en pantalla
-  const guardarSerie = (e) => {
-    e.preventDefault();
-    if (!peso || !reps) return;
+        fetch("http://localhost:5050/api/sesiones", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                usuarioId: usuario?.id,
+                rutinaId: parseInt(rutinaId),
+            }),
+        })
+            .then((res) => res.json())
+            .then((data) => {
+                setSesionId(data.sesionId);
+                setSesionIniciada(true);
+                setTimerActivo(true);
+                setMensaje("✅ Sesión iniciada. ¡A entrenar!");
+            })
+            .catch(() => setMensaje("❌ Error al iniciar la sesión."));
+    }, []);
 
-    const seriesDelMismoEjercicio = todasLasSeries.filter(s => s.ejercicio === ejercicioActual);
-    
-    const nuevaSerie = {
-      ejercicio: ejercicioActual,
-      numero: seriesDelMismoEjercicio.length + 1,
-      peso: peso,
-      reps: reps
+    useEffect(() => {
+        let intervalo;
+        if (timerActivo) {
+            intervalo = setInterval(() => {
+                setSegundos((prev) => prev + 1);
+            }, 1000);
+        }
+        return () => clearInterval(intervalo);
+    }, [timerActivo]);
+
+    const formatearTiempo = (segs) => {
+        const h = Math.floor(segs / 3600);
+        const m = Math.floor((segs % 3600) / 60);
+        const s = segs % 60;
+        if (h > 0) return `${h}h ${m}m ${s}s`;
+        if (m > 0) return `${m}m ${s}s`;
+        return `${s}s`;
     };
 
-    setTodasLasSeries([...todasLasSeries, nuevaSerie]);
-    setPeso('');
-    setReps('');
-  };
-
-  const avanzarSiguienteEjercicio = () => {
-    if (indiceEjercicioActual < listaEjercicios.length - 1) {
-      setIndiceEjercicioActual(indiceEjercicioActual + 1);
-    }
-  };
-
-  const regresarEjercicioAnterior = () => {
-    if (indiceEjercicioActual > 0) {
-      setIndiceEjercicioActual(indiceEjercicioActual - 1);
-    }
-  };
-
-  // Terminar todo el entrenamiento y mandarlo al historial unificado
-  const concluirSesionCompleta = () => {
-    if (todasLasSeries.length === 0) {
-      alert("⚠️ Debes anotar al menos una serie en todo tu entrenamiento antes de archivar.");
-      return;
-    }
-
-    const hoy = new Date();
-    const nombreMes = hoy.toLocaleString('es-ES', { month: 'long' });
-    const formatoFecha = `${hoy.getDate()} de ${nombreMes}, ${hoy.getFullYear()}`;
-
-    const registroHistorial = {
-      fecha: formatoFecha,
-      rutina: rutinaActiva ? rutinaActiva.nombre : "Sesión Libre Personalizada",
-      duracion: `${Math.floor(Math.random() * (75 - 50 + 1)) + 50} mins`,
-      estado: "Completado",
-      seriesTotales: todasLasSeries.length
+    const actualizarRegistro = (ejercicioId, serieIndex, campo, valor) => {
+        setRegistros((prev) => ({
+            ...prev,
+            [ejercicioId]: prev[ejercicioId].map((s, i) =>
+                i === serieIndex ? { ...s, [campo]: valor } : s,
+            ),
+        }));
     };
 
-    onFinalizarEntrenamiento(registroHistorial);
-  };
+    const finalizarEntrenamiento = async () => {
+        if (!sesionId) return;
 
-  // Filtrar las series del ejercicio actual en pantalla para listarlas ordenadamente
-  const seriesVisibles = todasLasSeries.filter(s => s.ejercicio === ejercicioActual);
+        const haySeriesDone = Object.values(registros).some((series) =>
+            series.some((s) => s.done && s.peso && parseFloat(s.peso) > 0),
+        );
 
-  return (
-    <div style={{ maxWidth: '650px', margin: '0 auto', fontFamily: 'sans-serif' }}>
-      <div style={{ background: '#fff', padding: '25px', borderRadius: '12px', border: '1px solid #e5e7eb', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }}>
-        
-        {/* ENCABEZADO */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-          <h2 style={{ margin: 0, color: '#1e3a8a' }}>⚡ Módulo de Entrenamiento Activo</h2>
-          <span style={{ background: '#fee2e2', color: '#ef4444', padding: '4px 10px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 'bold' }}>EN VIVO</span>
-        </div>
+        if (!haySeriesDone) {
+            setMensaje(
+                "⚠️ Marca al menos una serie como completada antes de finalizar.",
+            );
+            return;
+        }
 
-        <p style={{ color: '#4b5563', margin: '0 0 20px 0', fontSize: '0.95rem' }}>
-          <b>Rutina:</b> {rutinaActiva ? rutinaActiva.nombre : "Sesión Libre"} | <b>Progreso:</b> Ejercicio {indiceEjercicioActual + 1} de {listaEjercicios.length}
-        </p>
+        for (const ejercicioId of Object.keys(registros)) {
+            for (const serie of registros[ejercicioId]) {
+                if (serie.done && serie.peso && parseFloat(serie.peso) > 0) {
+                    await fetch(
+                        `http://localhost:5050/api/sesiones/${sesionId}/detalle`,
+                        {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                                ejercicioId: parseInt(ejercicioId),
+                                seriesHechas: 1,
+                                repsHechas: parseInt(serie.reps),
+                                pesoKg: parseFloat(serie.peso),
+                            }),
+                        },
+                    );
+                }
+            }
+        }
 
-        {/* TARJETA DEL EJERCICIO EN CURSO */}
-        <div style={{ background: '#f3f4f6', padding: '20px', borderRadius: '10px', border: '1px solid #e5e7eb', marginBottom: '25px' }}>
-          <span style={{ textTransform: 'uppercase', fontSize: '0.75rem', fontWeight: 'bold', color: '#2563eb', display: 'block', marginBottom: '4px' }}>Ejecutando Ejercicio Actual:</span>
-          <h3 style={{ margin: '0 0 15px 0', color: '#1f2937', fontSize: '1.4rem' }}>{ejercicioActual}</h3>
+        await fetch(
+            `http://localhost:5050/api/sesiones/${sesionId}/finalizar`,
+            { method: "PUT" },
+        );
+        setTimerActivo(false);
+        setFinalizado(true);
+    };
 
-          {/* Formulario para registrar múltiples series en este ejercicio */}
-          <form onSubmit={guardarSerie} style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-            <input type="number" placeholder="Peso (kg)" value={peso} onChange={(e) => setPeso(e.target.value)} style={{ width: '30%', padding: '10px', borderRadius: '6px', border: '1px solid #ccc', background: '#fff' }} />
-            <input type="number" placeholder="Repeticiones" value={reps} onChange={(e) => setReps(e.target.value)} style={{ width: '30%', padding: '10px', borderRadius: '6px', border: '1px solid #ccc', background: '#fff' }} />
-            <button type="submit" style={{ background: '#10b981', color: '#fff', border: 'none', padding: '10px 15px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', flexGrow: 1 }}>
-              + Anotar Serie
-            </button>
-          </form>
-
-          {/* Listado de series de ESTE ejercicio */}
-          <h4 style={{ margin: '20px 0 10px 0', fontSize: '0.9rem', color: '#4b5563' }}>Series de este ejercicio:</h4>
-          {seriesVisibles.length === 0 ? (
-            <p style={{ color: '#9ca3af', fontStyle: 'italic', fontSize: '0.85rem', margin: 0 }}>Ninguna serie guardada para este ejercicio todavía.</p>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              {seriesVisibles.map((s, idx) => (
-                <div key={idx} style={{ background: '#fff', padding: '8px 12px', borderRadius: '6px', border: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
-                  <span style={{ fontWeight: 'bold', color: '#2563eb' }}>Serie #{s.numero}</span>
-                  <span><b>{s.peso} kg</b> × {s.reps} repeticiones</span>
-                </div>
-              ))}
+    if (finalizado)
+        return (
+            <div
+                style={{
+                    textAlign: "center",
+                    padding: "60px",
+                    fontFamily: "sans-serif",
+                }}
+            >
+                <h2 style={{ color: "#10b981" }}>
+                    🎉 ¡Entrenamiento completado!
+                </h2>
+                <p style={{ color: "#666" }}>
+                    Tu sesión fue guardada en la base de datos.
+                </p>
+                <button
+                    onClick={() => navigate("/historial")}
+                    style={{
+                        background: "#2563eb",
+                        color: "#fff",
+                        border: "none",
+                        padding: "12px 24px",
+                        borderRadius: "8px",
+                        fontWeight: "bold",
+                        cursor: "pointer",
+                        marginTop: "20px",
+                    }}
+                >
+                    📅 Ver Historial
+                </button>
             </div>
-          )}
+        );
+
+    if (!rutina)
+        return (
+            <div
+                style={{ textAlign: "center", padding: "40px", color: "#666" }}
+            >
+                ⏳ Cargando entrenamiento...
+            </div>
+        );
+
+    return (
+        <div
+            style={{
+                maxWidth: "700px",
+                padding: "20px",
+                margin: "0 auto",
+                fontFamily: "sans-serif",
+            }}
+        >
+            <div
+                style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    marginBottom: "20px",
+                }}
+            >
+                <h2 style={{ margin: 0, color: "#1e3a8a" }}>
+                    ⚡ {rutina.nombre}
+                </h2>
+                {sesionIniciada && (
+                    <div
+                        style={{
+                            background: "#f0fdf4",
+                            border: "1px solid #bbf7d0",
+                            borderRadius: "8px",
+                            padding: "10px 16px",
+                            marginBottom: "20px",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "10px",
+                        }}
+                    >
+                        <span style={{ fontSize: "1.2rem" }}>⏱️</span>
+                        <span
+                            style={{
+                                fontSize: "1.3rem",
+                                fontWeight: "bold",
+                                color: "#15803d",
+                                fontFamily: "monospace",
+                            }}
+                        >
+                            {formatearTiempo(segundos)}
+                        </span>
+                        <span style={{ color: "#166534", fontSize: "0.85rem" }}>
+                            tiempo de entrenamiento
+                        </span>
+                    </div>
+                )}
+                {sesionIniciada && (
+                    <span
+                        style={{
+                            background: "#fee2e2",
+                            color: "#ef4444",
+                            padding: "4px 10px",
+                            borderRadius: "20px",
+                            fontSize: "0.75rem",
+                            fontWeight: "bold",
+                        }}
+                    >
+                        EN VIVO
+                    </span>
+                )}
+            </div>
+
+            {mensaje && (
+                <p
+                    style={{
+                        color: mensaje.includes("✅") ? "#065f46" : "#991b1b",
+                        marginBottom: "16px",
+                    }}
+                >
+                    {mensaje}
+                </p>
+            )}
+
+            {rutina.rutinaEjercicios?.map((re) => (
+                <div
+                    key={re.ejercicioId}
+                    style={{
+                        background: "#fff",
+                        borderRadius: "12px",
+                        boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
+                        marginBottom: "16px",
+                        overflow: "hidden",
+                    }}
+                >
+                    <div
+                        style={{
+                            background:
+                                "linear-gradient(135deg, #1e3a8a, #2563eb)",
+                            padding: "14px 20px",
+                        }}
+                    >
+                        <h4
+                            style={{
+                                margin: 0,
+                                color: "#fff",
+                                fontSize: "1rem",
+                            }}
+                        >
+                            {re.ejercicio?.nombre}
+                        </h4>
+                        <p
+                            style={{
+                                margin: "4px 0 0 0",
+                                color: "rgba(255,255,255,0.75)",
+                                fontSize: "0.8rem",
+                            }}
+                        >
+                            {re.series} series · {re.repeticiones} reps
+                            sugeridas
+                        </p>
+                    </div>
+
+                    <div style={{ padding: "16px 20px" }}>
+                        <div
+                            style={{
+                                display: "grid",
+                                gridTemplateColumns: "40px 1fr 1fr 60px",
+                                gap: "8px",
+                                marginBottom: "8px",
+                            }}
+                        >
+                            <span
+                                style={{
+                                    fontSize: "0.8rem",
+                                    color: "#6b7280",
+                                    fontWeight: "bold",
+                                }}
+                            >
+                                Serie
+                            </span>
+                            <span
+                                style={{
+                                    fontSize: "0.8rem",
+                                    color: "#6b7280",
+                                    fontWeight: "bold",
+                                }}
+                            >
+                                Peso (kg)
+                            </span>
+                            <span
+                                style={{
+                                    fontSize: "0.8rem",
+                                    color: "#6b7280",
+                                    fontWeight: "bold",
+                                }}
+                            >
+                                Reps
+                            </span>
+                            <span
+                                style={{
+                                    fontSize: "0.8rem",
+                                    color: "#6b7280",
+                                    fontWeight: "bold",
+                                    textAlign: "center",
+                                }}
+                            >
+                                Done
+                            </span>
+                        </div>
+
+                        {registros[re.ejercicioId]?.map((s, i) => (
+                            <div
+                                key={i}
+                                style={{
+                                    display: "grid",
+                                    gridTemplateColumns: "40px 1fr 1fr 60px",
+                                    gap: "8px",
+                                    marginBottom: "8px",
+                                    alignItems: "center",
+                                }}
+                            >
+                                <span
+                                    style={{
+                                        background: "#eff6ff",
+                                        color: "#1d4ed8",
+                                        borderRadius: "50%",
+                                        width: "28px",
+                                        height: "28px",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        fontSize: "0.85rem",
+                                        fontWeight: "bold",
+                                    }}
+                                >
+                                    {s.serie}
+                                </span>
+                                <input
+                                    type="number"
+                                    placeholder="0"
+                                    min="0"
+                                    value={s.peso}
+                                    onChange={(e) =>
+                                        actualizarRegistro(
+                                            re.ejercicioId,
+                                            i,
+                                            "peso",
+                                            e.target.value,
+                                        )
+                                    }
+                                    style={{
+                                        padding: "8px",
+                                        borderRadius: "6px",
+                                        border: "1px solid #ddd",
+                                        fontSize: "0.95rem",
+                                        width: "100%",
+                                        boxSizing: "border-box",
+                                    }}
+                                />
+                                <input
+                                    type="number"
+                                    min="0"
+                                    value={s.reps}
+                                    onChange={(e) =>
+                                        actualizarRegistro(
+                                            re.ejercicioId,
+                                            i,
+                                            "reps",
+                                            e.target.value,
+                                        )
+                                    }
+                                    style={{
+                                        padding: "8px",
+                                        borderRadius: "6px",
+                                        border: "1px solid #ddd",
+                                        fontSize: "0.95rem",
+                                        width: "100%",
+                                        boxSizing: "border-box",
+                                    }}
+                                />
+                                <div
+                                    style={{
+                                        display: "flex",
+                                        justifyContent: "center",
+                                    }}
+                                >
+                                    <input
+                                        type="checkbox"
+                                        checked={s.done || false}
+                                        onChange={(e) =>
+                                            actualizarRegistro(
+                                                re.ejercicioId,
+                                                i,
+                                                "done",
+                                                e.target.checked,
+                                            )
+                                        }
+                                        style={{
+                                            width: "20px",
+                                            height: "20px",
+                                            cursor: "pointer",
+                                            accentColor: "#10b981",
+                                        }}
+                                    />
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            ))}
+
+            <button
+                onClick={finalizarEntrenamiento}
+                style={{
+                    width: "100%",
+                    background: "#ef4444",
+                    color: "#fff",
+                    border: "none",
+                    padding: "16px",
+                    borderRadius: "10px",
+                    fontWeight: "bold",
+                    fontSize: "1.1rem",
+                    cursor: "pointer",
+                    marginTop: "8px",
+                }}
+            >
+                🛑 Finalizar Entrenamiento
+            </button>
+            <button
+                onClick={() => setMostrarConfirm(true)}
+                style={{
+                    width: "100%",
+                    background: "#f3f4f6",
+                    color: "#6b7280",
+                    border: "none",
+                    padding: "12px",
+                    borderRadius: "10px",
+                    fontWeight: "bold",
+                    fontSize: "0.95rem",
+                    cursor: "pointer",
+                    marginTop: "8px",
+                }}
+            >
+                ❌ Descartar entrenamiento
+            </button>
+
+            {mostrarConfirm && (
+                <div
+                    style={{
+                        position: "fixed",
+                        inset: 0,
+                        background: "rgba(0,0,0,0.5)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        zIndex: 1000,
+                    }}
+                >
+                    <div
+                        style={{
+                            background: "#fff",
+                            borderRadius: "16px",
+                            padding: "32px",
+                            maxWidth: "400px",
+                            width: "90%",
+                            textAlign: "center",
+                            boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
+                        }}
+                    >
+                        <div style={{ fontSize: "3rem", marginBottom: "16px" }}>
+                            ⚠️
+                        </div>
+                        <h3
+                            style={{
+                                margin: "0 0 8px 0",
+                                color: "#1f2937",
+                                fontSize: "1.2rem",
+                            }}
+                        >
+                            ¿Descartar entrenamiento?
+                        </h3>
+                        <p
+                            style={{
+                                margin: "0 0 24px 0",
+                                color: "#6b7280",
+                                fontSize: "0.95rem",
+                            }}
+                        >
+                            No se guardará ningún progreso de esta sesión.
+                        </p>
+                        <div style={{ display: "flex", gap: "12px" }}>
+                            <button
+                                onClick={() => setMostrarConfirm(false)}
+                                style={{
+                                    flex: 1,
+                                    padding: "12px",
+                                    borderRadius: "8px",
+                                    border: "1px solid #e5e7eb",
+                                    background: "#fff",
+                                    color: "#4b5563",
+                                    fontWeight: "bold",
+                                    cursor: "pointer",
+                                    fontSize: "0.95rem",
+                                }}
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={async () => {
+                                    if (sesionId)
+                                        await fetch(
+                                            `http://localhost:5050/api/sesiones/${sesionId}`,
+                                            { method: "DELETE" },
+                                        );
+                                    navigate("/rutinas");
+                                }}
+                                style={{
+                                    flex: 1,
+                                    padding: "12px",
+                                    borderRadius: "8px",
+                                    border: "none",
+                                    background: "#ef4444",
+                                    color: "#fff",
+                                    fontWeight: "bold",
+                                    cursor: "pointer",
+                                    fontSize: "0.95rem",
+                                }}
+                            >
+                                Sí, descartar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
-
-        {/* CONTROLES DE NAVEGACIÓN ENTRE EJERCICIOS */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', marginBottom: '20px' }}>
-          <button type="button" onClick={regresarEjercicioAnterior} disabled={indiceEjercicioActual === 0} style={{ background: '#9ca3af', color: '#fff', border: 'none', padding: '10px 15px', borderRadius: '6px', fontWeight: 'bold', cursor: indiceEjercicioActual === 0 ? 'not-allowed' : 'pointer', opacity: indiceEjercicioActual === 0 ? 0.5 : 1, flexGrow: 1 }}>
-            ⬅️ Ejercicio Anterior
-          </button>
-          
-          <button type="button" onClick={avanzarSiguienteEjercicio} disabled={indiceEjercicioActual === listaEjercicios.length - 1} style={{ background: '#2563eb', color: '#fff', border: 'none', padding: '10px 15px', borderRadius: '6px', fontWeight: 'bold', cursor: indiceEjercicioActual === listaEjercicios.length - 1 ? 'not-allowed' : 'pointer', opacity: indiceEjercicioActual === listaEjercicios.length - 1 ? 0.5 : 1, flexGrow: 1 }}>
-            Siguiente Ejercicio ➡️
-          </button>
-        </div>
-
-        {/* CONTENEDOR DE SALIDA */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {/* Botón de Finalizar Exitoso */}
-          <button type="button" onClick={concluirSesionCompleta} style={{ width: '100%', background: '#ef4444', color: '#fff', border: 'none', padding: '15px', borderRadius: '8px', fontWeight: 'bold', fontSize: '1.05rem', cursor: 'pointer', boxShadow: '0 4px 6px rgba(239,68,68,0.2)' }}>
-            🛑 Finalizar Todo el Entrenamiento y Archivar
-          </button>
-
-          {/* 🟢 NUEVO BOTÓN: REGRESAR / ELIMINAR PROGRESO ACTUAL */}
-          <button 
-            type="button" 
-            onClick={() => {
-              if (confirm("⚠️ ¿Estás seguro de que quieres salir? Se borrará el progreso de esta sesión actual y no se guardará en el historial.")) {
-                onCancelarEntrenamiento();
-              }
-            }} 
-            style={{ width: '100%', background: '#4b5563', color: '#fff', border: 'none', padding: '12px', borderRadius: '8px', fontWeight: 'bold', fontSize: '0.95rem', cursor: 'pointer', transition: 'background 0.2s' }}
-          >
-            ❌ Cancelar Sesión / Regresar a Mis Rutinas
-          </button>
-        </div>
-
-      </div>
-    </div>
-  );
+    );
 }
