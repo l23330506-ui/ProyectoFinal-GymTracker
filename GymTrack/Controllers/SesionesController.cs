@@ -48,10 +48,11 @@ namespace GymTrack.Controllers
         [HttpGet("usuario/{usuarioId}")]
         public async Task<ActionResult<IEnumerable<Sesion>>> GetHistorial(int usuarioId)
         {
-            return await _context
-                .Sesiones.Include(s => s.Rutina)
+            return await _context.Sesiones
+                .Include(s => s.Rutina)
                 .Include(s => s.Detalles)
-                .Where(s => s.UsuarioId == usuarioId)
+                .ThenInclude(d => d.Ejercicio)
+                .Where(s => s.UsuarioId == usuarioId && s.FechaFin != null)
                 .ToListAsync();
         }
 
@@ -67,6 +68,19 @@ namespace GymTrack.Controllers
             if (sesion == null)
                 return NotFound();
             return sesion;
+        }
+
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> EliminarSesion(int id)
+        {
+            var sesion = await _context.Sesiones
+                .Include(s => s.Detalles)
+                .FirstOrDefaultAsync(s => s.SesionId == id);
+
+            if (sesion == null) return NotFound();
+            _context.Sesiones.Remove(sesion);
+            await _context.SaveChangesAsync();
+            return NoContent();
         }
     }
 }

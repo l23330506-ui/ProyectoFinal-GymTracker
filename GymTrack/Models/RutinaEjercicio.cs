@@ -9,7 +9,7 @@ namespace GymTrack.Models
         public int Repeticiones { get; set; }
         public int Orden { get; set; }
 
-        public Rutina Rutina { get; set; } = null!;
-        public Ejercicio Ejercicio { get; set; } = null!;
+        public Rutina? Rutina { get; set; }
+        public Ejercicio? Ejercicio { get; set; }
     }
 }

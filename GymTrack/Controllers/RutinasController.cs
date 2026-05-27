@@ -44,7 +44,13 @@ namespace GymTrack.Controllers
             rutina.FechaCreacion = DateTime.Now;
             _context.Rutinas.Add(rutina);
             await _context.SaveChangesAsync();
-            return CreatedAtAction(nameof(GetRutina), new { id = rutina.RutinaId }, rutina);
+
+            var rutinaCompleta = await _context.Rutinas
+                .Include(r => r.RutinaEjercicios)
+                .ThenInclude(re => re.Ejercicio)
+                .FirstOrDefaultAsync(r => r.RutinaId == rutina.RutinaId);
+
+            return CreatedAtAction(nameof(GetRutina), new { id = rutina.RutinaId }, rutinaCompleta);
         }
 
         [HttpPut("{id}")]
@@ -74,7 +80,12 @@ namespace GymTrack.Controllers
             rutinaEjercicio.RutinaId = id;
             _context.RutinaEjercicios.Add(rutinaEjercicio);
             await _context.SaveChangesAsync();
-            return Ok(rutinaEjercicio);
+
+            var detalle = await _context.RutinaEjercicios
+                .Include(re => re.Ejercicio)
+                .FirstOrDefaultAsync(re => re.RutinaEjercicioId == rutinaEjercicio.RutinaEjercicioId);
+
+            return Ok(detalle);
         }
 
         [HttpDelete("{id}/ejercicios/{ejercicioId}")]

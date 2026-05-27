@@ -1,103 +1,123 @@
-import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
+import {
+    BrowserRouter as Router,
+    Routes,
+    Route,
+    Link,
+    useLocation,
+} from "react-router-dom";
 import Dashboard from "./pages/Dashboard";
-import CatalogoEjercicios from "./pages/CatalogoEjercicios";
 import MisRutinas from "./pages/MisRutinas";
 import EntrenamientoActivo from "./pages/EntrenamientoActivo";
 import Historial from "./pages/Historial";
 import Login from "./pages/Login";
 
-export default function App() {
+function Layout() {
+    const location = useLocation();
+    const esLogin = location.pathname === "/login";
+    const esEntrenamiento = location.pathname.startsWith("/entrenar");
+
     return (
-        <Router>
-            <div
-                style={{
-                    fontFamily: "Arial, sans-serif",
-                    minHeight: "100vh",
-                    background: "#f4f6f9",
-                    margin: 0,
-                }}
-            >
-                {/* Menú de navegación temporal y funcional */}
+        <div
+            style={{
+                fontFamily: "sans-serif",
+                minHeight: "100vh",
+                width: "100%",
+                background: "#f3f4f6",
+            }}
+        >
+            {!esLogin && !esEntrenamiento && (
                 <nav
                     style={{
                         padding: "15px 20px",
-                        background: "#1a1a1a",
+                        background: "#111827",
                         color: "#fff",
                         display: "flex",
                         gap: "20px",
-                        boxShadow: "0 2px 5px rgba(0,0,0,0.2)",
+                        alignItems: "center",
                     }}
                 >
+                    <span
+                        style={{
+                            fontWeight: "bold",
+                            fontSize: "1.2rem",
+                            marginRight: "10px",
+                        }}
+                    >
+                        🏋️‍♂️ GymTrack
+                    </span>
                     <Link
                         to="/"
                         style={{
                             color: "#fff",
                             textDecoration: "none",
-                            fontWeight: "bold",
+                            fontWeight: "500",
                         }}
                     >
-                        🏋️‍♂️ Dashboard
-                    </Link>
-                    <Link
-                        to="/ejercicios"
-                        style={{
-                            color: "#fff",
-                            textDecoration: "none",
-                            fontWeight: "bold",
-                        }}
-                    >
-                        📚 Catálogo
+                        📊 Dashboard
                     </Link>
                     <Link
                         to="/rutinas"
                         style={{
                             color: "#fff",
                             textDecoration: "none",
-                            fontWeight: "bold",
+                            fontWeight: "500",
                         }}
                     >
                         📝 Mis Rutinas
-                    </Link>
-                    <Link
-                        to="/entrenar"
-                        style={{
-                            color: "#fff",
-                            textDecoration: "none",
-                            fontWeight: "bold",
-                        }}
-                    >
-                        ⚡ Entrenar (Módulo 1)
                     </Link>
                     <Link
                         to="/historial"
                         style={{
                             color: "#fff",
                             textDecoration: "none",
-                            fontWeight: "bold",
+                            fontWeight: "500",
                         }}
                     >
-                        📅 Historial (Módulo 2)
+                        📅 Historial
                     </Link>
+                    <button
+                        onClick={() => {
+                            localStorage.removeItem("usuario");
+                            window.location.href = "/login";
+                        }}
+                        style={{
+                            marginLeft: "auto",
+                            background: "#ef4444",
+                            color: "#fff",
+                            border: "none",
+                            padding: "8px 14px",
+                            borderRadius: "6px",
+                            fontWeight: "bold",
+                            cursor: "pointer",
+                            fontSize: "0.85rem",
+                        }}
+                    >
+                        Cerrar sesión
+                    </button>
                 </nav>
+            )}
+            <main
+                style={{ padding: esLogin || esEntrenamiento ? "0" : "30px" }}
+            >
+                <Routes>
+                    <Route path="/login" element={<Login />} />
+                    <Route path="/" element={<Dashboard />} />
+                    <Route path="/rutinas" element={<MisRutinas />} />
+                    <Route
+                        path="/entrenar/:rutinaId"
+                        element={<EntrenamientoActivo />}
+                    />
+                    <Route path="/historial" element={<Historial />} />
+                </Routes>
+            </main>
+        </div>
+    );
+}
 
-                {/* Contenedor principal donde se renderizan tus 5 pantallas */}
-                <main style={{ padding: "30px" }}>
-                    <Routes>
-                        <Route path="/" element={<Dashboard />} />
-                        <Route
-                            path="/ejercicios"
-                            element={<CatalogoEjercicios />}
-                        />
-                        <Route path="/rutinas" element={<MisRutinas />} />
-                        <Route
-                            path="/entrenar"
-                            element={<EntrenamientoActivo />}
-                        />
-                        <Route path="/historial" element={<Historial />} />
-                        <Route path="/login" element={<Login />} />
-                    </Routes>
-                </main>
-            </div>
+export default function App() {
+    return (
+        <Router>
+            <Layout />
         </Router>
     );
 }

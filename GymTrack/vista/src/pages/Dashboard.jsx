@@ -4,6 +4,8 @@ import { useNavigate } from "react-router-dom";
 export default function Dashboard() {
     const navigate = useNavigate();
     const [sesiones, setSesiones] = useState([]);
+    const [rutinas, setRutinas] = useState([]);
+    const [rutinaSeleccionada, setRutinaSeleccionada] = useState("");
     const [cargando, setCargando] = useState(true);
 
     const usuario = JSON.parse(localStorage.getItem("usuario"));
@@ -13,6 +15,7 @@ export default function Dashboard() {
             navigate("/login");
             return;
         }
+
         fetch(`http://localhost:5050/api/sesiones/usuario/${usuario.id}`)
             .then((res) => res.json())
             .then((data) => {
@@ -20,6 +23,18 @@ export default function Dashboard() {
                 setCargando(false);
             })
             .catch(() => setCargando(false));
+
+        fetch("http://localhost:5050/api/rutinas")
+            .then((res) => res.json())
+            .then((data) => {
+                const misRutinas = data.filter(
+                    (r) => r.usuarioId === usuario?.id,
+                );
+                setRutinas(misRutinas);
+                if (misRutinas.length > 0)
+                    setRutinaSeleccionada(misRutinas[0].rutinaId);
+            })
+            .catch(() => {});
     }, []);
 
     const ultimaSesion =
@@ -37,7 +52,7 @@ export default function Dashboard() {
     return (
         <div
             style={{
-                maxWidth: "800px",
+                maxWidth: "1000px",
                 margin: "0 auto",
                 fontFamily: "sans-serif",
             }}
@@ -45,13 +60,21 @@ export default function Dashboard() {
             <div
                 style={{
                     background: "#fff",
-                    padding: "30px",
+                    padding: "35px 30px",
                     borderRadius: "12px",
                     boxShadow: "0 4px 6px rgba(0,0,0,0.05)",
-                    marginBottom: "20px",
+                    marginBottom: "25px",
+                    textAlign: "center",
                 }}
             >
-                <h1 style={{ margin: "0 0 10px 0", color: "#1a1a1a" }}>
+                <h1
+                    style={{
+                        margin: "0 0 12px 0",
+                        color: "#1a1a1a",
+                        fontSize: "2rem",
+                        fontWeight: "bold",
+                    }}
+                >
                     ¡Hola de nuevo, {usuario?.nombre}! 👋
                 </h1>
                 <p style={{ margin: 0, color: "#666", fontSize: "1.1rem" }}>
@@ -61,39 +84,106 @@ export default function Dashboard() {
 
             <div
                 style={{
-                    background: "linear-gradient(135deg, #2563eb, #1d4ed8)",
-                    color: "#fff",
-                    padding: "30px",
+                    background: "#1d4ed8",
+                    padding: "25px",
                     borderRadius: "12px",
-                    boxShadow: "0 4px 15px rgba(37,99,235,0.3)",
-                    marginBottom: "20px",
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
+                    marginBottom: "25px",
+                    boxShadow: "0 4px 10px rgba(29,78,216,0.3)",
                 }}
             >
-                <div>
-                    <h2 style={{ margin: "0 0 10px 0" }}>¿Entrenamos hoy?</h2>
-                    <p style={{ margin: 0, opacity: 0.9 }}>
-                        Registra tus series, repeticiones y pesos en tiempo
-                        real.
-                    </p>
-                </div>
-                <button
-                    onClick={() => navigate("/entrenar")}
+                <h3
                     style={{
-                        background: "#fff",
-                        color: "#2563eb",
-                        border: "none",
-                        padding: "12px 24px",
-                        borderRadius: "8px",
-                        fontWeight: "bold",
-                        cursor: "pointer",
-                        fontSize: "1rem",
+                        margin: "0 0 16px 0",
+                        color: "#fff",
+                        fontSize: "1.4rem",
                     }}
                 >
-                    🚀 Iniciar Entrenamiento
-                </button>
+                    ¿Entrenamos hoy?
+                </h3>
+
+                {rutinas.length === 0 ? (
+                    <div
+                        style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                        }}
+                    >
+                        <p
+                            style={{
+                                margin: 0,
+                                color: "rgba(255,255,255,0.85)",
+                            }}
+                        >
+                            No tienes rutinas creadas aún.
+                        </p>
+                        <button
+                            onClick={() => navigate("/rutinas")}
+                            style={{
+                                background: "#fff",
+                                color: "#1d4ed8",
+                                border: "none",
+                                padding: "10px 20px",
+                                borderRadius: "8px",
+                                fontWeight: "bold",
+                                cursor: "pointer",
+                            }}
+                        >
+                            + Crear rutina
+                        </button>
+                    </div>
+                ) : (
+                    <div
+                        style={{
+                            display: "flex",
+                            gap: "12px",
+                            alignItems: "center",
+                        }}
+                    >
+                        <select
+                            value={rutinaSeleccionada}
+                            onChange={(e) =>
+                                setRutinaSeleccionada(e.target.value)
+                            }
+                            style={{
+                                flex: 1,
+                                padding: "12px",
+                                borderRadius: "8px",
+                                border: "none",
+                                fontSize: "1rem",
+                                background: "rgba(255,255,255,0.15)",
+                                color: "#fff",
+                            }}
+                        >
+                            {rutinas.map((r) => (
+                                <option
+                                    key={r.rutinaId}
+                                    value={r.rutinaId}
+                                    style={{ color: "#000" }}
+                                >
+                                    {r.nombre}
+                                </option>
+                            ))}
+                        </select>
+                        <button
+                            onClick={() =>
+                                navigate(`/entrenar/${rutinaSeleccionada}`)
+                            }
+                            style={{
+                                background: "#fff",
+                                color: "#1d4ed8",
+                                border: "none",
+                                padding: "12px 20px",
+                                borderRadius: "8px",
+                                fontWeight: "bold",
+                                cursor: "pointer",
+                                whiteSpace: "nowrap",
+                            }}
+                        >
+                            🚀 Iniciar
+                        </button>
+                    </div>
+                )}
             </div>
 
             <div
@@ -106,25 +196,33 @@ export default function Dashboard() {
                 <div
                     style={{
                         background: "#fff",
-                        padding: "20px",
+                        padding: "25px",
                         borderRadius: "12px",
                         boxShadow: "0 4px 6px rgba(0,0,0,0.05)",
+                        textAlign: "center",
                     }}
                 >
-                    <h3 style={{ margin: "0 0 10px 0", color: "#444" }}>
+                    <h4 style={{ margin: "0 0 10px 0", color: "#4b5563" }}>
                         Total de entrenamientos
-                    </h3>
-                    <p
+                    </h4>
+                    <span
                         style={{
-                            fontSize: "1.5rem",
+                            fontSize: "2rem",
                             fontWeight: "bold",
-                            margin: "0 0 5px 0",
                             color: "#10b981",
+                            display: "block",
+                            marginBottom: "5px",
                         }}
                     >
                         {sesiones.length} sesiones
-                    </p>
-                    <p style={{ margin: 0, color: "#888", fontSize: "0.9rem" }}>
+                    </span>
+                    <p
+                        style={{
+                            margin: 0,
+                            color: "#9ca3af",
+                            fontSize: "0.85rem",
+                        }}
+                    >
                         ¡Construyendo disciplina día a día!
                     </p>
                 </div>
@@ -132,31 +230,39 @@ export default function Dashboard() {
                 <div
                     style={{
                         background: "#fff",
-                        padding: "20px",
+                        padding: "25px",
                         borderRadius: "12px",
                         boxShadow: "0 4px 6px rgba(0,0,0,0.05)",
+                        textAlign: "center",
                     }}
                 >
-                    <h3 style={{ margin: "0 0 10px 0", color: "#444" }}>
+                    <h4 style={{ margin: "0 0 10px 0", color: "#4b5563" }}>
                         Último Entrenamiento
-                    </h3>
-                    <p
+                    </h4>
+                    <span
                         style={{
-                            fontSize: "1.05rem",
-                            fontWeight: "500",
-                            margin: "0 0 5px 0",
-                            color: "#1a1a1a",
+                            fontSize: "1.1rem",
+                            fontWeight: "600",
+                            color: "#1f2937",
+                            display: "block",
+                            margin: "10px 0",
                         }}
                     >
                         {ultimaSesion
                             ? ultimaSesion.rutina?.nombre
                             : "Sin entrenamientos aún"}
-                    </p>
-                    <p style={{ margin: 0, color: "#888", fontSize: "0.9rem" }}>
+                    </span>
+                    <p
+                        style={{
+                            margin: 0,
+                            color: "#9ca3af",
+                            fontSize: "0.85rem",
+                        }}
+                    >
                         {ultimaSesion
                             ? new Date(
                                   ultimaSesion.fechaInicio,
-                              ).toLocaleDateString()
+                              ).toLocaleDateString("es-MX")
                             : "—"}
                     </p>
                 </div>

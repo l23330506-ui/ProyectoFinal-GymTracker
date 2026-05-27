@@ -27,7 +27,6 @@ export default function CatalogoEjercicios() {
             });
     }, []);
 
-    // Filtrado reactivo sobre los datos reales traídos de la API
     const ejerciciosFiltrados = ejercicios.filter(
         (ejercicio) =>
             ejercicio.nombre?.toLowerCase().includes(busqueda.toLowerCase()) ||

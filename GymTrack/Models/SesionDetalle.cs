@@ -9,7 +9,7 @@ namespace GymTrack.Models
         public int RepsHechas { get; set; }
         public decimal PesoKg { get; set; }
 
-        public Sesion Sesion { get; set; } = null!;
-        public Ejercicio Ejercicio { get; set; } = null!;
+        public Sesion? Sesion { get; set; }
+        public Ejercicio? Ejercicio { get; set; }
     }
 }
